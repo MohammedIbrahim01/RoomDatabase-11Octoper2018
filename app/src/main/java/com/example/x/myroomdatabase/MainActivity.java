@@ -7,6 +7,7 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -14,6 +15,7 @@ public class MainActivity extends AppCompatActivity {
     private TaskDao taskDao;
     private RecyclerView tasksRecyclerView;
     private TasksAdapter tasksAdapter;
+    private List<Task> taskList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,16 +25,28 @@ public class MainActivity extends AppCompatActivity {
         // get reference
         tasksRecyclerView = findViewById(R.id.tasks_recyclerView);
 
+        // setup tasks adapter
+        tasksAdapter = new TasksAdapter();
+
         // get database and taskDao
         database = AppDatabase.getInstance(getApplicationContext());
         taskDao = database.taskDao();
 
-        List<Task> taskList = taskDao.getAllTasks();
+        AppExecutors.getInstance().diskIO.execute(new Runnable() {
+            @Override
+            public void run() {
+                taskList = taskDao.getAllTasks();
 
-        // setup tasks adapter
-        tasksAdapter = new TasksAdapter();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        tasksAdapter.setTaskList(taskList);
+                    }
+                });
+            }
+        });
 
-        tasksAdapter.setTaskList(taskList);
+
 
         // setup recyclerView
         tasksRecyclerView.setLayoutManager(new LinearLayoutManager(this));
